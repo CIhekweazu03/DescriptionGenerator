@@ -1,0 +1,345 @@
+import streamlit as st
+from datetime import datetime, timedelta
+import os
+import json
+from event_generator import EventGenerator
+
+def initialize_session_state():
+    """Initialize session state variables if they don't exist."""
+    if "page" not in st.session_state:
+        st.session_state.page = "event_info"
+    if "event_data" not in st.session_state:
+        st.session_state.event_data = {}
+    if "event_description" not in st.session_state:
+        st.session_state.event_description = ""
+    if "volunteer_expectations" not in st.session_state:
+        st.session_state.volunteer_expectations = ""
+
+def save_event_data():
+    """Save form data to session state and navigate to description page."""
+    # Collect all form data
+    st.session_state.event_data = {
+        "event_name": st.session_state.event_name,
+        "event_type": st.session_state.event_type,
+        "location_name": st.session_state.location_name,
+        "street_address": st.session_state.street_address,
+        "city": st.session_state.city,
+        "state": st.session_state.state,
+        "zip_code": st.session_state.zip_code,
+        "region": st.session_state.region,
+        "event_category": "Standard Event",
+        "start_date": st.session_state.start_date.strftime("%Y-%m-%d"),
+        "end_date": st.session_state.end_date.strftime("%Y-%m-%d"),
+        "start_time": st.session_state.start_time.strftime("%H:%M"),
+        "end_time": st.session_state.end_time.strftime("%H:%M"),
+        "is_public": st.session_state.is_public,
+        "add_to_bank": st.session_state.add_to_bank,
+        "credit_hours": st.session_state.credit_hours,
+        "venue_type": st.session_state.venue_type,
+        "nwa": st.session_state.nwa,
+        "is_recurring": st.session_state.is_recurring,
+        "recurring_dates": st.session_state.get("recurring_dates", [])
+    }
+    
+    # Generate description
+    generator = EventGenerator()
+    st.session_state.event_description = generator.generate_event_description(st.session_state.event_data)
+    
+    # Navigate to description page
+    st.session_state.page = "description"
+
+def save_description():
+    """Save edited description and navigate to volunteer expectations page."""
+    # Update the event description with edited version
+    st.session_state.event_description = st.session_state.edited_description
+    
+    # Generate volunteer expectations
+    generator = EventGenerator()
+    st.session_state.volunteer_expectations = generator.generate_volunteer_expectations(
+        st.session_state.event_data, 
+        st.session_state.event_description
+    )
+    
+    # Navigate to volunteer expectations page
+    st.session_state.page = "volunteer"
+
+def save_volunteer_expectations():
+    """Save volunteer expectations and complete the process."""
+    # Save final volunteer expectations
+    st.session_state.volunteer_expectations = st.session_state.edited_volunteer_expectations
+    
+    # Export data (could save to file or database in a real implementation)
+    export_data = {
+        "event_data": st.session_state.event_data,
+        "event_description": st.session_state.event_description,
+        "volunteer_expectations": st.session_state.volunteer_expectations
+    }
+    
+    # For demo purposes, just show success message
+    st.session_state.page = "complete"
+    
+    # In a real implementation, save to database or file
+    # with open("event_export.json", "w") as f:
+    #     json.dump(export_data, f, indent=4)
+
+def restart_app():
+    """Reset the application to the initial state."""
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    initialize_session_state()
+
+def render_event_info_page():
+    """Render the first page for collecting event information."""
+    st.title("Event Information")
+    st.write("Please provide details about your event.")
+    
+    # Create a form for event details
+    with st.form("event_info_form"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.text_input("Event Name", key="event_name", 
+                         value=st.session_state.event_data.get("event_name", ""))
+                         
+            st.selectbox("Event Category", ["Standard Event"], 
+                        key="event_category",
+                        index=0)
+            
+            st.selectbox("Event Type", [
+                "Career Fair - In Class", "Career Fair - Booth Style", 
+                "Career Fair - Vehicle Day", "Career Fair - Expos",
+                "Career Fair - Other", "Cyber - Cyber Camp",
+                "Cyber - PCDC", "Girls Day Out", "GIS", 
+                "Lowcountry Youth Services", "Robotics", "SeaPerch",
+                "Summer Camp", "STEM Mobile Apps", "Student Programs"
+            ], key="event_type", 
+            index=0,
+            help="Select the type of event you're organizing")
+            
+            # Description field removed as requested - will be generated by AI
+        
+        with col2:
+            st.selectbox("State", [
+                "South Carolina", "Virginia", "Louisiana", "Alabama", "Alaska",
+                "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
+                "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois",
+                "Indiana", "Iowa", "Kansas", "Kentucky", "Maine", "Maryland",
+                "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri",
+                "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey",
+                "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
+                "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Dakota",
+                "Tennessee", "Texas", "Utah", "Vermont", "Washington", "West Virginia",
+                "Wisconsin", "Wyoming"
+            ], key="state", 
+            index=0,
+            help="Select the state where the event will be held")
+            
+            st.selectbox("Region", [
+                "Charleston, SC", "Hampton Roads, VA", "New Orleans, LA", "Other"
+            ], key="region", 
+            index=0)
+            
+            st.text_input("Location Name", key="location_name", 
+                         value=st.session_state.event_data.get("location_name", ""))
+            
+            st.text_input("Street Address", key="street_address", 
+                         value=st.session_state.event_data.get("street_address", ""))
+            
+            st.text_input("City", key="city", 
+                         value=st.session_state.event_data.get("city", ""))
+            
+            st.text_input("Zip Code", key="zip_code", 
+                         value=st.session_state.event_data.get("zip_code", ""))
+        
+        # Event timing
+        st.subheader("Event Timing")
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            start_date_val = (
+                datetime.strptime(st.session_state.event_data.get("start_date", ""), "%Y-%m-%d")
+                if "start_date" in st.session_state.event_data and st.session_state.event_data["start_date"]
+                else datetime.now()
+            )
+            st.date_input("Start Date", key="start_date", value=start_date_val)
+            
+            start_time_val = (
+                datetime.strptime(st.session_state.event_data.get("start_time", ""), "%H:%M").time()
+                if "start_time" in st.session_state.event_data and st.session_state.event_data["start_time"]
+                else datetime.now().replace(hour=9, minute=0).time()
+            )
+            st.time_input("Start Time", key="start_time", value=start_time_val)
+        
+        with col4:
+            end_date_val = (
+                datetime.strptime(st.session_state.event_data.get("end_date", ""), "%Y-%m-%d")
+                if "end_date" in st.session_state.event_data and st.session_state.event_data["end_date"]
+                else datetime.now()
+            )
+            st.date_input("End Date", key="end_date", value=end_date_val)
+            
+            end_time_val = (
+                datetime.strptime(st.session_state.event_data.get("end_time", ""), "%H:%M").time()
+                if "end_time" in st.session_state.event_data and st.session_state.event_data["end_time"]
+                else datetime.now().replace(hour=16, minute=0).time()
+            )
+            st.time_input("End Time", key="end_time", value=end_time_val)
+        
+        # Event settings
+        st.subheader("Event Settings")
+        col5, col6 = st.columns(2)
+        
+        with col5:
+            st.radio("Is this event public?", ["Yes", "No"], key="is_public", 
+                    index=0 if st.session_state.event_data.get("is_public", "Yes") == "Yes" else 1)
+            
+            st.radio("Add this event to event bank?", ["Yes", "No"], key="add_to_bank", 
+                    index=0 if st.session_state.event_data.get("add_to_bank", "Yes") == "Yes" else 1)
+        
+        with col6:
+            st.radio("Will credit hours be available?", ["Yes", "No"], key="credit_hours", 
+                    index=0 if st.session_state.event_data.get("credit_hours", "Yes") == "Yes" else 1)
+            
+            st.radio("This Event Will Be Held:", ["Indoors", "Outdoors"], key="venue_type", 
+                    index=0 if st.session_state.event_data.get("venue_type", "Indoors") == "Indoors" else 1)
+        
+        # NWA Information
+        st.selectbox("Please provide an NWA", [
+            "N/A", 
+            "Charleston, SC - 300000197108 LB05", 
+            "Hampton Roads, VA - 300000197108 LB06",
+            "New Orleans, LA - 000000000000 0000",
+            "Custom"
+        ], key="nwa", 
+        index=0)
+        
+        # Recurrence
+        st.subheader("Recurrence")
+        st.radio("Is This A Recurring Event?", ["Yes", "No"], key="is_recurring", 
+                index=0 if st.session_state.event_data.get("is_recurring", "No") == "Yes" else 1,
+                help="Select if this event will occur on multiple dates")
+        
+        if st.session_state.is_recurring == "Yes":
+            if "recurring_dates" not in st.session_state:
+                st.session_state.recurring_dates = []
+            
+            date_input = st.date_input("Add a recurring date:", 
+                                      min_value=datetime.now())
+            
+            if st.form_submit_button("Add Date"):
+                date_str = date_input.strftime("%Y-%m-%d")
+                if date_str not in st.session_state.recurring_dates:
+                    st.session_state.recurring_dates.append(date_str)
+            
+            if st.session_state.recurring_dates:
+                st.write("Recurring dates:")
+                for date in st.session_state.recurring_dates:
+                    st.write(f"- {date}")
+        
+        # Submit button
+        submit_button = st.form_submit_button("Generate Event Description")
+        if submit_button:
+            save_event_data()
+
+def render_description_page():
+    """Render the page for editing the generated description."""
+    st.title("Event Description")
+    st.write("Review and edit the generated event description.")
+    
+    with st.form("description_form"):
+        st.text_area("Generated Description", value=st.session_state.event_description, 
+                    height=300, key="edited_description")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.form_submit_button("Back to Event Info"):
+                st.session_state.page = "event_info"
+        with col2:
+            if st.form_submit_button("Generate Volunteer Expectations"):
+                save_description()
+
+def render_volunteer_page():
+    """Render the page for editing volunteer expectations."""
+    st.title("Volunteer Expectations")
+    st.write("Review and edit the generated volunteer expectations.")
+    
+    with st.form("volunteer_form"):
+        st.text_area("Generated Volunteer Expectations", value=st.session_state.volunteer_expectations, 
+                    height=300, key="edited_volunteer_expectations")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.form_submit_button("Back to Description"):
+                st.session_state.page = "description"
+        with col2:
+            if st.form_submit_button("Complete"):
+                save_volunteer_expectations()
+
+def render_complete_page():
+    """Render the completion page."""
+    st.title("Event Creation Complete")
+    st.success("Your event has been created successfully!")
+    
+    # Display summary
+    st.subheader("Event Summary")
+    st.write(f"**Event Name:** {st.session_state.event_data['event_name']}")
+    st.write(f"**Event Type:** {st.session_state.event_data['event_type']}")
+    st.write(f"**Date:** {st.session_state.event_data['start_date']} to {st.session_state.event_data['end_date']}")
+    
+    # Display description and volunteer expectations
+    st.subheader("Event Description")
+    st.write(st.session_state.event_description)
+    
+    st.subheader("Volunteer Expectations")
+    st.write(st.session_state.volunteer_expectations)
+    
+    # Button to start over
+    if st.button("Create Another Event"):
+        restart_app()
+
+def main():
+    """Main application function."""
+    st.set_page_config(
+        page_title="Event Description Generator",
+        page_icon="📅",
+        layout="wide"
+    )
+    
+    # Initialize session state
+    initialize_session_state()
+    
+    # Sidebar progress tracker
+    with st.sidebar:
+        st.title("Progress")
+        
+        # Highlight current step
+        if st.session_state.page == "event_info":
+            st.markdown("#### 1. Event Information ✓")
+            st.markdown("2. Event Description")
+            st.markdown("3. Volunteer Expectations")
+        elif st.session_state.page == "description":
+            st.markdown("1. Event Information ✓")
+            st.markdown("#### 2. Event Description ✓")
+            st.markdown("3. Volunteer Expectations")
+        elif st.session_state.page == "volunteer":
+            st.markdown("1. Event Information ✓")
+            st.markdown("2. Event Description ✓")
+            st.markdown("#### 3. Volunteer Expectations ✓")
+        elif st.session_state.page == "complete":
+            st.markdown("1. Event Information ✓")
+            st.markdown("2. Event Description ✓")
+            st.markdown("3. Volunteer Expectations ✓")
+            st.markdown("#### 🎉 Complete! 🎉")
+    
+    # Render the appropriate page
+    if st.session_state.page == "event_info":
+        render_event_info_page()
+    elif st.session_state.page == "description":
+        render_description_page()
+    elif st.session_state.page == "volunteer":
+        render_volunteer_page()
+    elif st.session_state.page == "complete":
+        render_complete_page()
+
+if __name__ == "__main__":
+    main()
