@@ -126,7 +126,7 @@ class EventGenerator:
         1. Start with a compelling introduction that clearly states the purpose of the event
         2. Include all essential details (what, when, where, who should attend)
         3. Highlight the benefits or value for participants
-        4. Keep it concise (3-5 paragraphs)
+        4. Keep it concise (1-2 paragraphs)
         5. Use professional, engaging language
         6. Incorporate any specific details provided in the description field
         7. Make sure all logistical information is clearly presented
