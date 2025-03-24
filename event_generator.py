@@ -12,7 +12,7 @@ class EventGenerator:
     
     def __init__(
         self,
-        model_id: str = 'anthropic.claude-3-sonnet-20240229-v1:0'
+        model_id: str = 'us.anthropic.claude-3-7-sonnet-20250219-v1:0'
     ):
         """
         Initialize the generator with AWS Bedrock client.
